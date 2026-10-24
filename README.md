@@ -8,6 +8,26 @@ and pseudo-labelling baselines, served via a FastAPI + React research prototype.
 > radiographic findings defined by report-mined dataset labels. They do not
 > diagnose cancer or any disease and must not guide clinical decisions.
 
+## Screenshots
+
+The images below use a **synthetic** X-ray-like picture, never patient data.
+No model has been trained yet, so the app shows its honest "no model" states;
+prediction screenshots will be added after Phase 4/5.
+
+| Analyze page (dark theme) | Analyze page (light theme) |
+|---|---|
+| ![Analyze page, dark theme](docs/screenshots/analyze-dark.png) | ![Analyze page, light theme](docs/screenshots/analyze-light.png) |
+| **Upload accepted and validated** | **Invalid file rejected** |
+| ![Uploaded image validated; no model loaded](docs/screenshots/upload-validated.png) | ![Error for a non-image file](docs/screenshots/invalid-file.png) |
+
+| Model card | Mobile |
+|---|---|
+| ![Model card with task, classes and limitations](docs/screenshots/model-card.png) | ![Mobile layout](docs/screenshots/mobile.png) |
+
+Regenerate with both servers running:
+`cd frontend && node scripts/screenshots.mjs <synthetic.png> <any-non-image-file>`
+(uses your installed Microsoft Edge through `playwright-core`).
+
 ## Status
 
 | Phase | State |
@@ -185,6 +205,37 @@ Schemas: `backend/schemas.py`, mirrored in `frontend/src/types.ts`.
 
 Tests: `python -m pytest -q -m "not slow"` (fast), `python -m pytest -q` (adds
 end-to-end training smoke tests, a few minutes on CPU) and `cd frontend && npm test`.
+
+## Deployment
+
+### Frontend on Vercel
+
+The React app is static and deploys to Vercel's free tier. Config: `frontend/vercel.json`.
+
+1. Sign in at https://vercel.com with GitHub.
+2. **Add New → Project →** import `-medical-ssl-dec`.
+3. Set **Root Directory** to `frontend`. Vercel detects Vite (build `npm run build`, output `dist`).
+4. Optional: under **Environment Variables** add
+   `VITE_API_BASE = https://<your-backend-host>/api` (see below).
+5. **Deploy.** Every `git push` to `main` redeploys automatically.
+
+Without a backend the hosted page shows "Analysis server is offline". The
+upload UI, model card and disclaimers still work.
+
+### Backend (not on Vercel)
+
+The FastAPI backend needs PyTorch (~2.5 GB installed). That is far over
+Vercel's serverless function size limit, so host it elsewhere, for example:
+
+| Host | Free tier | Notes |
+|---|---|---|
+| Hugging Face Spaces (Docker) | CPU, 16 GB RAM | best free fit for PyTorch inference |
+| AWS EC2 | free tier `t3.micro` is too small for DenseNet; use a larger paid instance | full control (Phase 8) |
+| Local machine | free | for demos and the viva |
+
+Then set on the backend `CORS_ORIGINS=https://<your-app>.vercel.app`, and on
+Vercel `VITE_API_BASE=https://<backend>/api`, and redeploy. A Dockerfile for the
+backend comes in Phase 8.
 
 ## Data and privacy rules
 

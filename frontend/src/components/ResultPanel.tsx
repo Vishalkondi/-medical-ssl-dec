@@ -55,13 +55,24 @@ function IdleState({ status, statusError, hasFile }: { status: ModelStatus | nul
   );
 }
 
+const IS_LOCAL = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
 function BackendOffline() {
   return (
     <div className="state state--error">
       <AlertIcon width={28} height={28} />
       <h3>Analysis server is offline</h3>
-      <p>Start the backend from the project folder, then refresh this page:</p>
-      <pre className="code">uvicorn backend.main:app --port 8000</pre>
+      {IS_LOCAL ? (
+        <>
+          <p>Start the backend from the project folder, then refresh this page:</p>
+          <pre className="code">uvicorn backend.main:app --port 8000</pre>
+        </>
+      ) : (
+        <p>
+          This hosted demo shows the interface only; its model server is not running right now. To try it with a
+          model, run the project locally (see the README).
+        </p>
+      )}
     </div>
   );
 }

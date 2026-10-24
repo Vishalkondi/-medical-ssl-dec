@@ -6,6 +6,8 @@ data/processed/*
 *.png
 *.jpg
 *.jpeg
+# README screenshots of the UI (synthetic images only, never patient data)
+!docs/screenshots/*.png
 *.dcm
 *.nii
 *.nii.gz
