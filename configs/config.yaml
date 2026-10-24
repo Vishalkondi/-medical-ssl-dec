@@ -1,0 +1,89 @@
+# Central configuration. Every script reads this file; do not hard-code paths
+# or hyperparameters in code. Sections marked "Phase N" are filled in later.
+
+project:
+  name: medical-ssl-dec
+  seed: 42
+
+paths:
+  raw_dir: data/raw/chestxray14          # original NIH files (never modified)
+  processed_dir: data/processed/cxr14_256 # resized copies used for training
+  splits_dir: data/splits
+  artifacts_dir: artifacts                # best checkpoints for inference
+  experiments_dir: experiments            # per-run logs, metrics, plots
+
+# Phase 1 decision (see docs/phase1_planning.md). Confirmed by user.
+task:
+  dataset: nih_chestxray14
+  type: binary                            # single-label, 2 classes
+  classes: ["no_finding", "nodule_or_mass"]
+  positive_labels: ["Nodule", "Mass"]     # NIH label strings -> class 1
+  negative_labels: ["No Finding"]         # NIH label string  -> class 0
+  # Images with any other finding are excluded from this binary task.
+  views: ["PA", "AP"]
+
+data:                                     # Phase 3
+  metadata_csv: Data_Entry_2017_v2020.csv # relative to paths.raw_dir (name on NIH Box)
+  train_val_list: train_val_list.txt      # official NIH patient-disjoint lists
+  test_list: test_list.txt
+  image_size: 224
+  preprocess_size: 256                    # offline resize target
+  val_fraction: 0.1                       # of train_val PATIENTS
+  # Nested labelled subsets: every smaller set is contained in the larger ones,
+  # so the label-fraction sweep differs only in how many labels are revealed.
+  labeled_fractions: [0.01, 0.05, 0.10, 0.25]
+  default_labeled_fraction: 0.05
+
+  mean: [0.485, 0.456, 0.406]             # ImageNet stats (pretrained backbone)
+  std: [0.229, 0.224, 0.225]
+
+model:                                    # Phase 4-5
+  backbone: densenet121                   # densenet121 | resnet50
+  pretrained: true
+  embedding_dim: 64                       # SSLDEC embedding size (z)
+  dec_alpha: 1.0                          # Student's t degrees of freedom (paper: 1)
+
+training:                                 # shared by all methods
+  device: auto                            # auto | cuda | cpu
+  batch_size: 32                          # lower to 16 if CUDA runs out of memory
+  num_workers: 4                          # set 0 if DataLoader workers crash on Windows
+  mixed_precision: true
+  weight_decay: 1.0e-4
+  class_weighted_loss: true               # counter class imbalance in the labelled loss
+  augment: true
+
+# 1. Supervised-only baseline: labelled images only.
+baseline:
+  epochs: 30
+  lr: 1.0e-4
+  patience: 6                             # early stopping on validation ROC-AUC
+
+# 2. Basic pseudo-labelling (Lee, 2013): warm-up like the baseline, then
+#    rounds of adding confident predictions on unlabelled images as labels.
+pseudo_label:
+  warmup_epochs: 15
+  rounds: 3
+  epochs_per_round: 8
+  lr: 5.0e-5
+  confidence_threshold: 0.95
+  balance_to_prior: true                  # keep pseudo-label class ratio = labelled ratio
+  unlabeled_per_round: 20000              # subsample of the unlabelled pool per round
+  patience: 4
+
+# 3. SSLDEC: supervised warm-up on q, cluster centres = labelled class means,
+#    then L = L_sup + lambda(t) * KL(P || Q) on confident unlabelled images.
+ssldec:
+  warmup_epochs: 15
+  epochs: 25
+  lr: 5.0e-5
+  lambda_max: 1.0
+  rampup_epochs: 8                        # sigmoid ramp-up of lambda
+  confidence_threshold: 0.8               # on max_j p_ij
+  prior_correction: true                  # target cluster sizes follow labelled class prior
+  balance_to_prior: true
+  unlabeled_per_epoch: 20000
+  patience: 6
+
+evaluation:
+  bootstrap_samples: 1000                 # patient-level bootstrap for 95% CIs
+  calibration_bins: 10

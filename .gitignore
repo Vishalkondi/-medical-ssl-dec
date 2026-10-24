@@ -1,0 +1,53 @@
+# --- Medical data: NEVER commit images, masks, or metadata dumps ---
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.png
+*.jpg
+*.jpeg
+*.dcm
+*.nii
+*.nii.gz
+*.zip
+*.tar.gz
+
+# Split files contain only image/patient IDs from a public dataset; they are kept
+# in git for reproducibility. Remove this exception if you ever use private data.
+!data/splits/*.csv
+
+# --- Model artifacts and experiment outputs (large) ---
+artifacts/*
+experiments/*
+!artifacts/.gitkeep
+!experiments/.gitkeep
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.cache/
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
